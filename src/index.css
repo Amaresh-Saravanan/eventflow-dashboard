@@ -51,22 +51,22 @@
   .dark {
     /* Dashboard - Dark SaaS Theme */
     --background: 250 32% 12%;
-    --foreground: 0 0% 100%;
+    --foreground: 0 0% 98%;
 
     --card: 252 30% 16%;
-    --card-foreground: 0 0% 100%;
+    --card-foreground: 0 0% 98%;
 
     --popover: 252 30% 16%;
-    --popover-foreground: 0 0% 100%;
+    --popover-foreground: 0 0% 98%;
 
     --primary: 254 58% 69%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 252 25% 20%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary-foreground: 0 0% 95%;
 
     --muted: 252 25% 20%;
-    --muted-foreground: 240 5% 65%;
+    --muted-foreground: 240 5% 75%;
 
     --accent: 254 58% 69%;
     --accent-foreground: 0 0% 100%;
@@ -74,21 +74,21 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 100% / 0.04;
+    --border: 252 20% 25%;
     --input: 254 30% 18%;
-    --ring: 254 58% 69% / 0.3;
+    --ring: 254 58% 69%;
 
     --shadow-card: 0 4px 24px -4px rgba(0, 0, 0, 0.4);
     --shadow-elevated: 0 8px 32px -8px rgba(0, 0, 0, 0.5);
 
     /* Sidebar */
     --sidebar-background: 252 36% 11%;
-    --sidebar-foreground: 0 0% 100%;
+    --sidebar-foreground: 0 0% 95%;
     --sidebar-primary: 254 58% 69%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 254 58% 69% / 0.15;
+    --sidebar-accent: 254 58% 69%;
     --sidebar-accent-foreground: 254 58% 69%;
-    --sidebar-border: 0 0% 100% / 0.04;
+    --sidebar-border: 252 20% 20%;
     --sidebar-ring: 254 58% 69%;
   }
 
