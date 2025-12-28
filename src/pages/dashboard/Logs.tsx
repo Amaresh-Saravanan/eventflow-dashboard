@@ -112,7 +112,7 @@ const Logs = () => {
         {/* Actions bar */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <input type="text" placeholder="Search logs..." className="w-64 h-10 px-4 rounded-xl bg-secondary border border-border text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            <input type="text" placeholder="Search logs..." className="w-64 h-10 px-4 rounded-xl bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
             <select className="h-10 px-4 rounded-xl bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none cursor-pointer text-muted-foreground">
               <option value="">All levels</option>
               <option value="info">Info</option>
