@@ -36,7 +36,7 @@ const DashboardHeader = ({
             </div>
             <div className="hidden md:block text-left">
               <p className="text-sm font-medium text-muted-foreground">John Doe</p>
-              <p className="text-xs text-muted-foreground">Pro Plan</p>
+              
             </div>
             <ChevronDown className="w-4 h-4 text-muted-foreground hidden md:block" />
           </button>
