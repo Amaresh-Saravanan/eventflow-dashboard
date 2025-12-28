@@ -5,76 +5,31 @@ import { Activity, Webhook, CheckCircle, Clock, TrendingUp, ArrowUpRight, AlertT
 import { Link } from "react-router-dom";
 const stats = [{
   title: "Total Events",
-  value: "1,247,893",
-  change: "+12.5% from last month",
-  changeType: "positive" as const,
+  value: "—",
+  change: "",
+  changeType: "neutral" as const,
   icon: Activity
 }, {
   title: "Active Endpoints",
-  value: "24",
-  change: "3 added this week",
+  value: "—",
+  change: "",
   changeType: "neutral" as const,
   icon: Webhook
 }, {
   title: "Success Rate",
-  value: "99.8%",
-  change: "+0.3% from last week",
-  changeType: "positive" as const,
+  value: "—",
+  change: "",
+  changeType: "neutral" as const,
   icon: CheckCircle
 }, {
   title: "Avg. Latency",
-  value: "45ms",
-  change: "-5ms improvement",
-  changeType: "positive" as const,
+  value: "—",
+  change: "",
+  changeType: "neutral" as const,
   icon: Clock
 }];
-const recentEvents = [{
-  id: "evt_1a2b3c",
-  endpoint: "Stripe Payments",
-  status: "success" as const,
-  time: "2 min ago"
-}, {
-  id: "evt_4d5e6f",
-  endpoint: "User Signups",
-  status: "success" as const,
-  time: "5 min ago"
-}, {
-  id: "evt_7g8h9i",
-  endpoint: "Order Updates",
-  status: "failed" as const,
-  time: "12 min ago"
-}, {
-  id: "evt_0j1k2l",
-  endpoint: "Inventory Sync",
-  status: "success" as const,
-  time: "18 min ago"
-}, {
-  id: "evt_3m4n5o",
-  endpoint: "Stripe Payments",
-  status: "pending" as const,
-  time: "23 min ago"
-}];
-const topEndpoints = [{
-  name: "Stripe Payments",
-  events: "45,231",
-  trend: "+8%",
-  status: "healthy"
-}, {
-  name: "User Signups",
-  events: "23,845",
-  trend: "+15%",
-  status: "healthy"
-}, {
-  name: "Order Updates",
-  events: "18,392",
-  trend: "-2%",
-  status: "warning"
-}, {
-  name: "Inventory Sync",
-  events: "12,456",
-  trend: "+5%",
-  status: "healthy"
-}];
+const recentEvents: { id: string; endpoint: string; status: "success" | "failed" | "pending"; time: string }[] = [];
+const topEndpoints: { name: string; events: string; trend: string; status: string }[] = [];
 const Dashboard = () => {
   return <div className="animate-fade-in">
       <DashboardHeader title="Dashboard" subtitle="Monitor your webhook activity and performance" />
