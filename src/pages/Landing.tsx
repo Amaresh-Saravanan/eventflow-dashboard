@@ -45,18 +45,17 @@ const pricingPlans = [{
 }];
 const Landing = () => {
   const navigate = useNavigate();
-
   const handleViewDocs = () => {
     const featuresSection = document.getElementById('features');
     if (featuresSection) {
-      featuresSection.scrollIntoView({ behavior: 'smooth' });
+      featuresSection.scrollIntoView({
+        behavior: 'smooth'
+      });
     }
   };
-
   const handleDemo = () => {
     navigate('/dashboard');
   };
-
   return <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
@@ -113,19 +112,10 @@ const Landing = () => {
               Start for free
               <ArrowRight className="w-5 h-5" />
             </Link>
-            <button 
-              onClick={handleViewDocs}
-              className="h-12 px-8 rounded-xl border border-border text-foreground font-medium flex items-center gap-2 hover:bg-secondary transition-colors"
-            >
+            <button onClick={handleViewDocs} className="h-12 px-8 rounded-xl border border-border text-foreground font-medium flex items-center gap-2 hover:bg-secondary transition-colors">
               View documentation
             </button>
-            <button 
-              onClick={handleDemo}
-              className="h-12 px-8 rounded-xl bg-success text-success-foreground font-medium flex items-center gap-2 hover:opacity-90 transition-opacity"
-            >
-              <Play className="w-5 h-5" />
-              Demonstrate
-            </button>
+            
           </div>
 
           
