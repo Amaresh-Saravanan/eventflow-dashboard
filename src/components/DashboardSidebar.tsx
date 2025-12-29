@@ -1,5 +1,7 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Webhook, Activity, FileText, Settings, LogOut, Zap } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Overview" },
@@ -10,12 +12,20 @@ const navItems = [
 
 const DashboardSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   const isActive = (path: string) => {
     if (path === "/dashboard") {
       return location.pathname === "/dashboard";
     }
     return location.pathname.startsWith(path);
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    toast({ title: "Signed out", description: "You have been signed out successfully" });
+    navigate("/", { replace: true });
   };
 
   return (
@@ -50,13 +60,14 @@ const DashboardSidebar = () => {
           <Settings className="w-5 h-5" />
           <span>Settings</span>
         </Link>
-        <Link to="/" className="sidebar-item text-muted-foreground hover:text-error">
+        <button onClick={handleLogout} className="sidebar-item w-full text-left text-muted-foreground hover:text-error">
           <LogOut className="w-5 h-5" />
           <span>Log out</span>
-        </Link>
+        </button>
       </div>
     </aside>
   );
 };
 
 export default DashboardSidebar;
+

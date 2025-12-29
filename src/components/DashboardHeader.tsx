@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Bell, Search, ChevronDown, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useUser } from "@/contexts/UserContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DashboardHeaderProps {
   title: string;
@@ -9,6 +11,8 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -39,13 +43,21 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
     setShowNotifications(false);
   };
 
-  const handleUserMenuAction = (action: string) => {
+  const handleUserMenuAction = async (action: string) => {
+    if (action === "Sign out") {
+      await signOut();
+      toast({ title: "Signed out", description: "You have been signed out successfully" });
+      navigate("/", { replace: true });
+      return;
+    }
+
     toast({
       title: action,
       description: `${action} action triggered`,
     });
     setShowUserMenu(false);
   };
+
 
   return (
     <header className="h-16 border-b border-border bg-background/50 backdrop-blur-sm sticky top-0 z-10">
