@@ -4,6 +4,7 @@ import Table from "@/components/Table";
 import StatusBadge from "@/components/StatusBadge";
 import { Plus, MoreVertical, Copy, ExternalLink, Trash2, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useEndpoints } from "@/hooks/useEndpoints";
 import {
   Dialog,
   DialogContent,
@@ -14,34 +15,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-interface Endpoint {
-  id: string;
-  name: string;
-  url: string;
-  status: "active" | "inactive";
-  createdAt: string;
-  eventsToday: number;
-}
-
-const initialEndpoints: Endpoint[] = [
-  { id: "ep_001", name: "Stripe Payments", url: "https://api.example.com/webhooks/stripe", status: "active", createdAt: "Dec 15, 2024", eventsToday: 1247 },
-  { id: "ep_002", name: "User Signups", url: "https://api.example.com/webhooks/users", status: "active", createdAt: "Dec 10, 2024", eventsToday: 892 },
-  { id: "ep_003", name: "Order Updates", url: "https://api.example.com/webhooks/orders", status: "inactive", createdAt: "Dec 5, 2024", eventsToday: 0 },
-  { id: "ep_004", name: "Inventory Sync", url: "https://api.example.com/webhooks/inventory", status: "active", createdAt: "Nov 28, 2024", eventsToday: 456 },
-  { id: "ep_005", name: "Analytics Events", url: "https://api.example.com/webhooks/analytics", status: "active", createdAt: "Nov 20, 2024", eventsToday: 2341 },
-  { id: "ep_006", name: "Email Notifications", url: "https://api.example.com/webhooks/email", status: "active", createdAt: "Nov 15, 2024", eventsToday: 187 },
-  { id: "ep_007", name: "CRM Integration", url: "https://api.example.com/webhooks/crm", status: "inactive", createdAt: "Nov 10, 2024", eventsToday: 0 },
-  { id: "ep_008", name: "Slack Alerts", url: "https://api.example.com/webhooks/slack", status: "active", createdAt: "Nov 5, 2024", eventsToday: 89 },
-];
-
 const Endpoints = () => {
-  const [endpoints, setEndpoints] = useState<Endpoint[]>(initialEndpoints);
+  const { endpoints, loading, createEndpoint, deleteEndpoint } = useEndpoints();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showNewEndpointDialog, setShowNewEndpointDialog] = useState(false);
   const [newEndpointName, setNewEndpointName] = useState("");
   const [newEndpointUrl, setNewEndpointUrl] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
   const itemsPerPage = 8;
 
   const filteredEndpoints = useMemo(() => {
@@ -65,20 +47,21 @@ const Endpoints = () => {
     });
   };
 
-  const handleDelete = (id: string, name: string) => {
-    setEndpoints(prev => prev.filter(e => e.id !== id));
-    toast({
-      title: "Endpoint deleted",
-      description: `${name} has been removed`,
-      variant: "destructive",
-    });
+  const handleDelete = async (id: string, name: string) => {
+    const success = await deleteEndpoint(id);
+    if (success) {
+      toast({
+        title: "Endpoint deleted",
+        description: `${name} has been removed`,
+      });
+    }
   };
 
   const handleOpenExternal = (url: string) => {
     window.open(url, "_blank");
   };
 
-  const handleCreateEndpoint = () => {
+  const handleCreateEndpoint = async () => {
     if (!newEndpointName || !newEndpointUrl) {
       toast({
         title: "Validation error",
@@ -88,24 +71,19 @@ const Endpoints = () => {
       return;
     }
 
-    const newEndpoint: Endpoint = {
-      id: `ep_${Date.now()}`,
-      name: newEndpointName,
-      url: newEndpointUrl,
-      status: "active",
-      createdAt: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      eventsToday: 0,
-    };
+    setIsCreating(true);
+    const result = await createEndpoint(newEndpointName, newEndpointUrl);
+    setIsCreating(false);
 
-    setEndpoints(prev => [newEndpoint, ...prev]);
-    setShowNewEndpointDialog(false);
-    setNewEndpointName("");
-    setNewEndpointUrl("");
-    
-    toast({
-      title: "Endpoint created",
-      description: `${newEndpointName} has been added successfully`,
-    });
+    if (result) {
+      setShowNewEndpointDialog(false);
+      setNewEndpointName("");
+      setNewEndpointUrl("");
+      toast({
+        title: "Endpoint created",
+        description: `${newEndpointName} has been added successfully`,
+      });
+    }
   };
 
   const clearFilters = () => {
@@ -115,11 +93,19 @@ const Endpoints = () => {
 
   const hasActiveFilters = searchQuery || statusFilter;
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", { 
+      month: "short", 
+      day: "numeric", 
+      year: "numeric" 
+    });
+  };
+
   const columns = [
     {
-      key: "name" as keyof Endpoint,
+      key: "name" as const,
       header: "Name",
-      render: (item: Endpoint) => (
+      render: (item: typeof endpoints[0]) => (
         <div>
           <p className="font-medium text-foreground">{item.name}</p>
           <p className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">{item.url}</p>
@@ -127,9 +113,9 @@ const Endpoints = () => {
       )
     },
     {
-      key: "url" as keyof Endpoint,
+      key: "url" as const,
       header: "Endpoint URL",
-      render: (item: Endpoint) => (
+      render: (item: typeof endpoints[0]) => (
         <div className="flex items-center gap-2">
           <code className="text-xs bg-secondary px-2 py-1 rounded-md font-mono max-w-[300px] truncate text-foreground">
             {item.url}
@@ -148,26 +134,26 @@ const Endpoints = () => {
       className: "hidden lg:table-cell"
     },
     {
-      key: "status" as keyof Endpoint,
+      key: "status" as const,
       header: "Status",
-      render: (item: Endpoint) => <StatusBadge status={item.status} />
+      render: (item: typeof endpoints[0]) => <StatusBadge status={item.status} />
     },
     {
-      key: "eventsToday" as keyof Endpoint,
-      header: "Events Today",
-      render: (item: Endpoint) => <span className="text-sm tabular-nums text-foreground">{item.eventsToday.toLocaleString()}</span>,
+      key: "events_count" as const,
+      header: "Events",
+      render: (item: typeof endpoints[0]) => <span className="text-sm tabular-nums text-foreground">{item.events_count.toLocaleString()}</span>,
       className: "hidden md:table-cell"
     },
     {
-      key: "createdAt" as keyof Endpoint,
+      key: "created_at" as const,
       header: "Created",
-      render: (item: Endpoint) => <span className="text-sm text-muted-foreground">{item.createdAt}</span>,
+      render: (item: typeof endpoints[0]) => <span className="text-sm text-muted-foreground">{formatDate(item.created_at)}</span>,
       className: "hidden sm:table-cell"
     },
     {
-      key: "actions" as keyof Endpoint,
+      key: "actions" as const,
       header: "",
-      render: (item: Endpoint) => (
+      render: (item: typeof endpoints[0]) => (
         <div className="flex items-center justify-end gap-1">
           <button
             onClick={(e) => {
@@ -201,6 +187,17 @@ const Endpoints = () => {
       className: "w-[120px]"
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="animate-fade-in">
+        <DashboardHeader title="Endpoints" subtitle="Manage your webhook endpoints" />
+        <div className="p-6 flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in">
@@ -252,31 +249,50 @@ const Endpoints = () => {
           </div>
         )}
 
-        {/* Table */}
-        <Table columns={columns} data={paginatedEndpoints} />
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredEndpoints.length)}</span> of <span className="font-medium">{filteredEndpoints.length}</span> endpoints
-          </p>
-          <div className="flex items-center gap-2">
+        {/* Empty state */}
+        {endpoints.length === 0 ? (
+          <div className="bg-card rounded-2xl border border-border p-12 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Plus className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No endpoints yet</h3>
+            <p className="text-muted-foreground mb-4">Create your first webhook endpoint to start receiving events</p>
             <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(p => p - 1)}
-              className="h-9 px-4 rounded-lg bg-secondary text-sm font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50 text-foreground"
+              onClick={() => setShowNewEndpointDialog(true)}
+              className="h-10 px-4 rounded-xl gradient-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
             >
-              Previous
-            </button>
-            <button
-              disabled={currentPage === totalPages || totalPages === 0}
-              onClick={() => setCurrentPage(p => p + 1)}
-              className="h-9 px-4 rounded-lg bg-secondary text-sm font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50 text-foreground"
-            >
-              Next
+              Create Endpoint
             </button>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Table */}
+            <Table columns={columns} data={paginatedEndpoints} />
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredEndpoints.length)}</span> of <span className="font-medium">{filteredEndpoints.length}</span> endpoints
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="h-9 px-4 rounded-lg bg-secondary text-sm font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50 text-foreground"
+                >
+                  Previous
+                </button>
+                <button
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="h-9 px-4 rounded-lg bg-secondary text-sm font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50 text-foreground"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* New Endpoint Dialog */}
@@ -314,8 +330,8 @@ const Endpoints = () => {
             <Button variant="outline" onClick={() => setShowNewEndpointDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateEndpoint} className="gradient-primary text-primary-foreground">
-              Create Endpoint
+            <Button onClick={handleCreateEndpoint} disabled={isCreating} className="gradient-primary text-primary-foreground">
+              {isCreating ? "Creating..." : "Create Endpoint"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -2,19 +2,19 @@ import { useState } from "react";
 import DashboardHeader from "@/components/DashboardHeader";
 import { User, Bell, Key, Copy, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { useUser } from "@/contexts/UserContext";
-
-interface ApiKey {
-  id: string;
-  name: string;
-  key: string;
-  created: string;
-}
+import { useProfile } from "@/hooks/useProfile";
+import { useApiKeys } from "@/hooks/useApiKeys";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Settings = () => {
-  const { user, updateUser } = useUser();
-  const [fullName, setFullName] = useState(user.fullName);
-  const [email, setEmail] = useState(user.email);
+  const { signOut } = useAuth();
+  const { profile, loading: profileLoading, updateProfile } = useProfile();
+  const { apiKeys, loading: keysLoading, createApiKey, deleteApiKey } = useApiKeys();
+  
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   const [notifications, setNotifications] = useState({
     failedWebhook: true,
@@ -22,17 +22,14 @@ const Settings = () => {
     securityAlerts: true,
   });
 
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([
-    { id: "1", name: "Production Key", key: "wh_live_" + generateRandomKey(), created: "Dec 15, 2024" },
-    { id: "2", name: "Development Key", key: "wh_test_" + generateRandomKey(), created: "Dec 10, 2024" },
-  ]);
-
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
+  const [newlyCreatedKeys, setNewlyCreatedKeys] = useState<Record<string, string>>({});
 
-  function generateRandomKey(): string {
-    return Array.from({ length: 24 }, () => 
-      "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)]
-    ).join("");
+  // Initialize form with profile data
+  if (profile && !isInitialized) {
+    setFullName(profile.full_name || "");
+    setEmail(profile.email || "");
+    setIsInitialized(true);
   }
 
   const handleNotificationToggle = (key: keyof typeof notifications) => {
@@ -46,35 +43,47 @@ const Settings = () => {
     });
   };
 
-  const handleGenerateKey = () => {
-    const newKey: ApiKey = {
-      id: Date.now().toString(),
-      name: `API Key ${apiKeys.length + 1}`,
-      key: "wh_live_" + generateRandomKey(),
-      created: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-    };
-    setApiKeys(prev => [...prev, newKey]);
-    setVisibleKeys(prev => ({ ...prev, [newKey.id]: true }));
-    toast({
-      title: "API Key generated",
-      description: "Your new API key has been created. Make sure to copy it now!",
-    });
+  const handleGenerateKey = async () => {
+    const rawKey = await createApiKey(`API Key ${apiKeys.length + 1}`);
+    if (rawKey) {
+      // Store the raw key temporarily so user can copy it
+      const keyId = apiKeys[0]?.id; // The newly created key will be at the start
+      if (keyId) {
+        setNewlyCreatedKeys(prev => ({ ...prev, [keyId]: rawKey }));
+        setVisibleKeys(prev => ({ ...prev, [keyId]: true }));
+      }
+      toast({
+        title: "API Key generated",
+        description: "Your new API key has been created. Make sure to copy it now!",
+      });
+    }
   };
 
-  const handleRevokeKey = (keyId: string) => {
-    setApiKeys(prev => prev.filter(k => k.id !== keyId));
-    toast({
-      title: "API Key revoked",
-      description: "The API key has been permanently deleted",
-      variant: "destructive",
-    });
+  const handleRevokeKey = async (keyId: string) => {
+    const success = await deleteApiKey(keyId);
+    if (success) {
+      setNewlyCreatedKeys(prev => {
+        const updated = { ...prev };
+        delete updated[keyId];
+        return updated;
+      });
+      toast({
+        title: "API Key revoked",
+        description: "The API key has been permanently deleted",
+      });
+    }
   };
 
-  const handleCopyKey = (key: string) => {
-    navigator.clipboard.writeText(key);
+  const handleCopyKey = (keyId: string, keyPrefix: string) => {
+    const fullKey = newlyCreatedKeys[keyId];
+    if (fullKey) {
+      navigator.clipboard.writeText(fullKey);
+    } else {
+      navigator.clipboard.writeText(keyPrefix + "...");
+    }
     toast({
       title: "Copied to clipboard",
-      description: "API key copied successfully",
+      description: fullKey ? "Full API key copied" : "Key prefix copied (full key only available immediately after creation)",
     });
   };
 
@@ -82,15 +91,33 @@ const Settings = () => {
     setVisibleKeys(prev => ({ ...prev, [keyId]: !prev[keyId] }));
   };
 
-  const maskKey = (key: string) => {
-    return key.substring(0, 8) + "••••••••••••" + key.substring(key.length - 4);
+  const maskKey = (keyPrefix: string, keyId: string) => {
+    const fullKey = newlyCreatedKeys[keyId];
+    if (fullKey && visibleKeys[keyId]) {
+      return fullKey;
+    }
+    return keyPrefix + "••••••••••••••••••••";
   };
 
-  const handleSaveChanges = () => {
-    updateUser({ fullName, email });
+  const handleSaveChanges = async () => {
+    setIsSaving(true);
+    await updateProfile({ full_name: fullName, email });
+    setIsSaving(false);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
     toast({
-      title: "Settings saved",
-      description: "Your changes have been saved successfully",
+      title: "Signed out",
+      description: "You have been signed out successfully",
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
@@ -99,6 +126,19 @@ const Settings = () => {
     { key: "weeklyDigest" as const, label: "Weekly digest", description: "Receive a weekly summary of your webhook activity" },
     { key: "securityAlerts" as const, label: "Security alerts", description: "Important security-related notifications" },
   ];
+
+  const loading = profileLoading || keysLoading;
+
+  if (loading && !isInitialized) {
+    return (
+      <div className="animate-fade-in">
+        <DashboardHeader title="Settings" subtitle="Manage your account and preferences" />
+        <div className="p-6 flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in">
@@ -194,53 +234,66 @@ const Settings = () => {
               </button>
             </div>
             <div className="space-y-3">
-              {apiKeys.map(apiKey => (
-                <div key={apiKey.id} className="flex items-center justify-between p-4 rounded-xl bg-secondary/30">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-foreground">{apiKey.name}</p>
-                    <code className="text-xs text-muted-foreground font-mono">
-                      {visibleKeys[apiKey.id] ? apiKey.key : maskKey(apiKey.key)}
-                    </code>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => toggleKeyVisibility(apiKey.id)}
-                      className="p-2 rounded-lg hover:bg-secondary transition-colors"
-                      title={visibleKeys[apiKey.id] ? "Hide key" : "Show key"}
-                    >
-                      {visibleKeys[apiKey.id] ? (
-                        <EyeOff className="w-4 h-4 text-muted-foreground" />
-                      ) : (
-                        <Eye className="w-4 h-4 text-muted-foreground" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleCopyKey(apiKey.key)}
-                      className="p-2 rounded-lg hover:bg-secondary transition-colors"
-                      title="Copy key"
-                    >
-                      <Copy className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                    <span className="text-xs text-muted-foreground hidden sm:inline">{apiKey.created}</span>
-                    <button
-                      onClick={() => handleRevokeKey(apiKey.id)}
-                      className="text-xs text-destructive hover:underline"
-                    >
-                      Revoke
-                    </button>
-                  </div>
+              {apiKeys.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No API keys yet. Generate one to get started.
                 </div>
-              ))}
+              ) : (
+                apiKeys.map(apiKey => (
+                  <div key={apiKey.id} className="flex items-center justify-between p-4 rounded-xl bg-secondary/30">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-foreground">{apiKey.name}</p>
+                      <code className="text-xs text-muted-foreground font-mono">
+                        {visibleKeys[apiKey.id] ? maskKey(apiKey.key_prefix, apiKey.id) : apiKey.key_prefix + "••••••••••••"}
+                      </code>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleKeyVisibility(apiKey.id)}
+                        className="p-2 rounded-lg hover:bg-secondary transition-colors"
+                        title={visibleKeys[apiKey.id] ? "Hide key" : "Show key"}
+                      >
+                        {visibleKeys[apiKey.id] ? (
+                          <EyeOff className="w-4 h-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleCopyKey(apiKey.id, apiKey.key_prefix)}
+                        className="p-2 rounded-lg hover:bg-secondary transition-colors"
+                        title="Copy key"
+                      >
+                        <Copy className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                      <span className="text-xs text-muted-foreground hidden sm:inline">{formatDate(apiKey.created_at)}</span>
+                      <button
+                        onClick={() => handleRevokeKey(apiKey.id)}
+                        className="text-xs text-destructive hover:underline"
+                      >
+                        Revoke
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
-          {/* Save button */}
-          <div className="flex justify-end">
+          {/* Actions */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={handleSignOut}
+              className="h-11 px-6 rounded-xl bg-secondary border border-border text-foreground font-medium hover:bg-secondary/80 transition-colors"
+            >
+              Sign Out
+            </button>
             <button
               onClick={handleSaveChanges}
-              className="h-11 px-6 rounded-xl gradient-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
+              disabled={isSaving}
+              className="h-11 px-6 rounded-xl gradient-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              Save Changes
+              {isSaving ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </div>
