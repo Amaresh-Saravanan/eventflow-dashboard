@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Bell, Search, ChevronDown, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useUser } from "@/contexts/UserContext";
 
 interface DashboardHeaderProps {
   title: string;
@@ -8,6 +9,7 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
+  const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -141,10 +143,10 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
               className="flex items-center gap-3 p-1.5 pr-3 rounded-lg hover:bg-secondary transition-colors"
             >
               <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center text-sm font-medium text-primary-foreground">
-                JD
+                {user.initials}
               </div>
               <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-foreground">John Doe</p>
+                <p className="text-sm font-medium text-foreground">{user.fullName}</p>
               </div>
               <ChevronDown className={`w-4 h-4 text-muted-foreground hidden md:block transition-transform ${showUserMenu ? "rotate-180" : ""}`} />
             </button>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import DashboardHeader from "@/components/DashboardHeader";
 import { User, Bell, Key, Copy, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useUser } from "@/contexts/UserContext";
 
 interface ApiKey {
   id: string;
@@ -11,8 +12,9 @@ interface ApiKey {
 }
 
 const Settings = () => {
-  const [fullName, setFullName] = useState("John Doe");
-  const [email, setEmail] = useState("john@example.com");
+  const { user, updateUser } = useUser();
+  const [fullName, setFullName] = useState(user.fullName);
+  const [email, setEmail] = useState(user.email);
   
   const [notifications, setNotifications] = useState({
     failedWebhook: true,
@@ -85,6 +87,7 @@ const Settings = () => {
   };
 
   const handleSaveChanges = () => {
+    updateUser({ fullName, email });
     toast({
       title: "Settings saved",
       description: "Your changes have been saved successfully",
