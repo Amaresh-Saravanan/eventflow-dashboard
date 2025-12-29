@@ -14,7 +14,182 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      api_keys: {
+        Row: {
+          created_at: string
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      endpoints: {
+        Row: {
+          created_at: string
+          events_count: number
+          id: string
+          last_event_at: string | null
+          method: string
+          name: string
+          status: string
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          events_count?: number
+          id?: string
+          last_event_at?: string | null
+          method?: string
+          name: string
+          status?: string
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          events_count?: number
+          id?: string
+          last_event_at?: string | null
+          method?: string
+          name?: string
+          status?: string
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      events: {
+        Row: {
+          created_at: string
+          duration: number | null
+          endpoint_id: string | null
+          endpoint_name: string
+          event_id: string
+          event_type: string
+          headers: Json | null
+          id: string
+          payload: Json | null
+          response: Json | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration?: number | null
+          endpoint_id?: string | null
+          endpoint_name: string
+          event_id: string
+          event_type: string
+          headers?: Json | null
+          id?: string
+          payload?: Json | null
+          response?: Json | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration?: number | null
+          endpoint_id?: string | null
+          endpoint_name?: string
+          event_id?: string
+          event_type?: string
+          headers?: Json | null
+          id?: string
+          payload?: Json | null
+          response?: Json | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_endpoint_id_fkey"
+            columns: ["endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "endpoints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logs: {
+        Row: {
+          created_at: string
+          id: string
+          level: string
+          message: string
+          metadata: Json | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level?: string
+          message: string
+          metadata?: Json | null
+          source: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: string
+          message?: string
+          metadata?: Json | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -3,72 +3,15 @@ import { useNavigate } from "react-router-dom";
 import DashboardHeader from "@/components/DashboardHeader";
 import Table from "@/components/Table";
 import StatusBadge from "@/components/StatusBadge";
-import { Filter, Download, X } from "lucide-react";
+import { Filter, Download, X, Activity } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-
-interface Event {
-  id: string;
-  eventId: string;
-  endpoint: string;
-  eventType: string;
-  status: "success" | "failed" | "pending";
-  timestamp: string;
-  duration: string;
-}
-
-const allEvents: Event[] = [
-  { id: "1", eventId: "evt_1a2b3c4d5e", endpoint: "Stripe Payments", eventType: "payment.succeeded", status: "success", timestamp: "Dec 28, 2024 14:32:15", duration: "45ms" },
-  { id: "2", eventId: "evt_2b3c4d5e6f", endpoint: "User Signups", eventType: "user.created", status: "success", timestamp: "Dec 28, 2024 14:31:42", duration: "32ms" },
-  { id: "3", eventId: "evt_3c4d5e6f7g", endpoint: "Order Updates", eventType: "order.updated", status: "failed", timestamp: "Dec 28, 2024 14:30:18", duration: "1.2s" },
-  { id: "4", eventId: "evt_4d5e6f7g8h", endpoint: "Inventory Sync", eventType: "inventory.changed", status: "success", timestamp: "Dec 28, 2024 14:28:55", duration: "67ms" },
-  { id: "5", eventId: "evt_5e6f7g8h9i", endpoint: "Stripe Payments", eventType: "payment.refunded", status: "pending", timestamp: "Dec 28, 2024 14:27:33", duration: "-" },
-  { id: "6", eventId: "evt_6f7g8h9i0j", endpoint: "Analytics Events", eventType: "page.viewed", status: "success", timestamp: "Dec 28, 2024 14:26:12", duration: "28ms" },
-  { id: "7", eventId: "evt_7g8h9i0j1k", endpoint: "Email Notifications", eventType: "email.sent", status: "success", timestamp: "Dec 28, 2024 14:25:01", duration: "156ms" },
-  { id: "8", eventId: "evt_8h9i0j1k2l", endpoint: "CRM Integration", eventType: "contact.updated", status: "failed", timestamp: "Dec 28, 2024 14:23:44", duration: "2.1s" },
-  { id: "9", eventId: "evt_9i0j1k2l3m", endpoint: "Slack Alerts", eventType: "alert.triggered", status: "success", timestamp: "Dec 28, 2024 14:22:19", duration: "89ms" },
-  { id: "10", eventId: "evt_0j1k2l3m4n", endpoint: "User Signups", eventType: "user.verified", status: "success", timestamp: "Dec 28, 2024 14:21:05", duration: "41ms" },
-  { id: "11", eventId: "evt_1k2l3m4n5o", endpoint: "Stripe Payments", eventType: "payment.failed", status: "failed", timestamp: "Dec 28, 2024 14:20:00", duration: "234ms" },
-  { id: "12", eventId: "evt_2l3m4n5o6p", endpoint: "Order Updates", eventType: "order.shipped", status: "success", timestamp: "Dec 28, 2024 14:18:30", duration: "52ms" },
-];
-
-const columns = [
-  {
-    key: "eventId" as keyof Event,
-    header: "Event ID",
-    render: (item: Event) => <code className="text-xs bg-secondary px-2 py-1 rounded-md font-mono text-foreground">{item.eventId}</code>
-  },
-  {
-    key: "endpoint" as keyof Event,
-    header: "Endpoint",
-    render: (item: Event) => <span className="font-medium text-sm text-foreground">{item.endpoint}</span>
-  },
-  {
-    key: "eventType" as keyof Event,
-    header: "Event Type",
-    render: (item: Event) => <code className="text-xs text-muted-foreground font-mono">{item.eventType}</code>,
-    className: "hidden md:table-cell"
-  },
-  {
-    key: "status" as keyof Event,
-    header: "Status",
-    render: (item: Event) => <StatusBadge status={item.status} />
-  },
-  {
-    key: "duration" as keyof Event,
-    header: "Duration",
-    render: (item: Event) => <span className="text-muted-foreground">{item.duration}</span>,
-    className: "hidden sm:table-cell"
-  },
-  {
-    key: "timestamp" as keyof Event,
-    header: "Timestamp",
-    render: (item: Event) => <span className="text-sm text-muted-foreground tabular-nums">{item.timestamp}</span>,
-    className: "hidden lg:table-cell"
-  }
-];
+import { useEvents, Event } from "@/hooks/useEvents";
+import { useEndpoints } from "@/hooks/useEndpoints";
 
 const Events = () => {
   const navigate = useNavigate();
+  const { events, loading } = useEvents();
+  const { endpoints } = useEndpoints();
   const [searchQuery, setSearchQuery] = useState("");
   const [endpointFilter, setEndpointFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -77,28 +20,52 @@ const Events = () => {
   const itemsPerPage = 10;
 
   const filteredEvents = useMemo(() => {
-    return allEvents.filter(event => {
+    return events.filter(event => {
       const matchesSearch = searchQuery === "" ||
-        event.eventId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.endpoint.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.eventType.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesEndpoint = endpointFilter === "" || event.endpoint.toLowerCase().includes(endpointFilter.toLowerCase());
+        event.event_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.endpoint_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.event_type.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesEndpoint = endpointFilter === "" || event.endpoint_name.toLowerCase().includes(endpointFilter.toLowerCase());
       const matchesStatus = statusFilter === "" || event.status === statusFilter;
       return matchesSearch && matchesEndpoint && matchesStatus;
     });
-  }, [searchQuery, endpointFilter, statusFilter]);
+  }, [events, searchQuery, endpointFilter, statusFilter]);
 
   const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
   const paginatedEvents = filteredEvents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleRowClick = (event: Event) => {
-    navigate(`/dashboard/events/${event.eventId}`);
+    navigate(`/dashboard/events/${event.event_id}`);
+  };
+
+  const formatTimestamp = (dateString: string) => {
+    return new Date(dateString).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
+
+  const formatDuration = (ms: number | null) => {
+    if (!ms) return "-";
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
   };
 
   const handleExport = () => {
     const csvContent = [
       ["Event ID", "Endpoint", "Event Type", "Status", "Duration", "Timestamp"].join(","),
-      ...filteredEvents.map(e => [e.eventId, e.endpoint, e.eventType, e.status, e.duration, e.timestamp].join(","))
+      ...filteredEvents.map(e => [
+        e.event_id,
+        e.endpoint_name,
+        e.event_type,
+        e.status,
+        formatDuration(e.duration),
+        formatTimestamp(e.created_at)
+      ].join(","))
     ].join("\n");
     
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -124,6 +91,56 @@ const Events = () => {
 
   const hasActiveFilters = searchQuery || endpointFilter || statusFilter;
 
+  const columns = [
+    {
+      key: "event_id" as const,
+      header: "Event ID",
+      render: (item: Event) => <code className="text-xs bg-secondary px-2 py-1 rounded-md font-mono text-foreground">{item.event_id}</code>
+    },
+    {
+      key: "endpoint_name" as const,
+      header: "Endpoint",
+      render: (item: Event) => <span className="font-medium text-sm text-foreground">{item.endpoint_name}</span>
+    },
+    {
+      key: "event_type" as const,
+      header: "Event Type",
+      render: (item: Event) => <code className="text-xs text-muted-foreground font-mono">{item.event_type}</code>,
+      className: "hidden md:table-cell"
+    },
+    {
+      key: "status" as const,
+      header: "Status",
+      render: (item: Event) => <StatusBadge status={item.status} />
+    },
+    {
+      key: "duration" as const,
+      header: "Duration",
+      render: (item: Event) => <span className="text-muted-foreground">{formatDuration(item.duration)}</span>,
+      className: "hidden sm:table-cell"
+    },
+    {
+      key: "created_at" as const,
+      header: "Timestamp",
+      render: (item: Event) => <span className="text-sm text-muted-foreground tabular-nums">{formatTimestamp(item.created_at)}</span>,
+      className: "hidden lg:table-cell"
+    }
+  ];
+
+  // Get unique endpoint names for filter dropdown
+  const uniqueEndpoints = [...new Set(endpoints.map(e => e.name))];
+
+  if (loading) {
+    return (
+      <div className="animate-fade-in">
+        <DashboardHeader title="Events" subtitle="View all webhook events and their delivery status" />
+        <div className="p-6 flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in">
       <DashboardHeader title="Events" subtitle="View all webhook events and their delivery status" />
@@ -145,11 +162,9 @@ const Events = () => {
               className="h-10 px-4 rounded-xl bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none cursor-pointer text-foreground"
             >
               <option value="">All endpoints</option>
-              <option value="stripe">Stripe Payments</option>
-              <option value="users">User Signups</option>
-              <option value="orders">Order Updates</option>
-              <option value="inventory">Inventory Sync</option>
-              <option value="analytics">Analytics Events</option>
+              {uniqueEndpoints.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
             </select>
             <select
               value={statusFilter}
@@ -196,65 +211,78 @@ const Events = () => {
         {/* Filter info */}
         {hasActiveFilters && (
           <div className="text-sm text-muted-foreground">
-            Showing {filteredEvents.length} of {allEvents.length} events
+            Showing {filteredEvents.length} of {events.length} events
           </div>
         )}
 
-        {/* Table */}
-        <Table columns={columns} data={paginatedEvents} onRowClick={handleRowClick} />
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredEvents.length)}</span> of <span className="font-medium">{filteredEvents.length}</span> events
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(p => p - 1)}
-              className="h-9 px-4 rounded-lg bg-secondary text-sm font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50 text-foreground"
-            >
-              Previous
-            </button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`w-9 h-9 rounded-lg text-sm font-medium ${
-                    currentPage === page
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-              {totalPages > 5 && (
-                <>
-                  <span className="px-2 text-muted-foreground">...</span>
-                  <button
-                    onClick={() => setCurrentPage(totalPages)}
-                    className={`w-9 h-9 rounded-lg text-sm font-medium ${
-                      currentPage === totalPages
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {totalPages}
-                  </button>
-                </>
-              )}
+        {/* Empty state */}
+        {events.length === 0 ? (
+          <div className="bg-card rounded-2xl border border-border p-12 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Activity className="w-8 h-8 text-primary" />
             </div>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(p => p + 1)}
-              className="h-9 px-4 rounded-lg bg-secondary text-sm font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50 text-foreground"
-            >
-              Next
-            </button>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No events yet</h3>
+            <p className="text-muted-foreground">Events will appear here when webhooks are triggered</p>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Table */}
+            <Table columns={columns} data={paginatedEvents} onRowClick={handleRowClick} />
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredEvents.length)}</span> of <span className="font-medium">{filteredEvents.length}</span> events
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="h-9 px-4 rounded-lg bg-secondary text-sm font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50 text-foreground"
+                >
+                  Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium ${
+                        currentPage === page
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-foreground hover:bg-secondary/80"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  {totalPages > 5 && (
+                    <>
+                      <span className="px-2 text-muted-foreground">...</span>
+                      <button
+                        onClick={() => setCurrentPage(totalPages)}
+                        className={`w-9 h-9 rounded-lg text-sm font-medium ${
+                          currentPage === totalPages
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-foreground hover:bg-secondary/80"
+                        }`}
+                      >
+                        {totalPages}
+                      </button>
+                    </>
+                  )}
+                </div>
+                <button
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="h-9 px-4 rounded-lg bg-secondary text-sm font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50 text-foreground"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

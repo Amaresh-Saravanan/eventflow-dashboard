@@ -1,39 +1,9 @@
 import { useState, useMemo } from "react";
 import DashboardHeader from "@/components/DashboardHeader";
 import StatusBadge from "@/components/StatusBadge";
-import { Download, Filter, RefreshCw, X } from "lucide-react";
+import { Download, Filter, RefreshCw, X, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-
-interface LogEntry {
-  id: string;
-  time: string;
-  level: "info" | "warn" | "error";
-  message: string;
-  source: string;
-}
-
-const allLogs: LogEntry[] = [
-  { id: "1", time: "14:32:15.847", level: "info", message: "Webhook delivered successfully to Stripe Payments endpoint", source: "delivery" },
-  { id: "2", time: "14:32:15.802", level: "info", message: "Processing payment.succeeded event", source: "processor" },
-  { id: "3", time: "14:31:42.123", level: "info", message: "New user signup webhook triggered", source: "trigger" },
-  { id: "4", time: "14:30:18.456", level: "error", message: "Connection timeout after 30000ms to Order Updates endpoint", source: "delivery" },
-  { id: "5", time: "14:30:18.123", level: "warn", message: "Retry attempt 3/5 for event evt_3c4d5e6f7g", source: "retry" },
-  { id: "6", time: "14:28:55.789", level: "info", message: "Inventory sync completed successfully", source: "delivery" },
-  { id: "7", time: "14:27:33.456", level: "info", message: "Payment refund event queued for processing", source: "queue" },
-  { id: "8", time: "14:26:12.123", level: "info", message: "Page view analytics event processed", source: "processor" },
-  { id: "9", time: "14:25:01.789", level: "info", message: "Email notification sent successfully", source: "delivery" },
-  { id: "10", time: "14:23:44.456", level: "error", message: "Invalid response from CRM Integration: 502 Bad Gateway", source: "delivery" },
-  { id: "11", time: "14:23:43.123", level: "warn", message: "Slow response detected (2.1s) from CRM Integration", source: "monitor" },
-  { id: "12", time: "14:22:19.789", level: "info", message: "Slack alert triggered successfully", source: "delivery" },
-  { id: "13", time: "14:21:05.456", level: "info", message: "User verification webhook delivered", source: "delivery" },
-  { id: "14", time: "14:20:33.123", level: "info", message: "System health check passed", source: "health" },
-  { id: "15", time: "14:19:12.789", level: "warn", message: "High latency detected on analytics endpoint (>100ms)", source: "monitor" },
-  { id: "16", time: "14:18:05.456", level: "info", message: "Database backup completed", source: "system" },
-  { id: "17", time: "14:17:33.123", level: "error", message: "Failed to connect to external API", source: "delivery" },
-  { id: "18", time: "14:16:22.789", level: "info", message: "Cache cleared successfully", source: "system" },
-  { id: "19", time: "14:15:11.456", level: "warn", message: "Rate limit approaching for API endpoint", source: "monitor" },
-  { id: "20", time: "14:14:00.123", level: "info", message: "New endpoint configuration saved", source: "system" },
-];
+import { useLogs, LogEntry } from "@/hooks/useLogs";
 
 const levelIcons = {
   info: "text-info",
@@ -42,6 +12,7 @@ const levelIcons = {
 };
 
 const Logs = () => {
+  const { logs, loading, refetch } = useLogs();
   const [searchQuery, setSearchQuery] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
@@ -50,7 +21,7 @@ const Logs = () => {
   const [visibleCount, setVisibleCount] = useState(10);
 
   const filteredLogs = useMemo(() => {
-    return allLogs.filter(log => {
+    return logs.filter(log => {
       const matchesSearch = searchQuery === "" || 
         log.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
         log.source.toLowerCase().includes(searchQuery.toLowerCase());
@@ -58,22 +29,37 @@ const Logs = () => {
       const matchesSource = sourceFilter === "" || log.source === sourceFilter;
       return matchesSearch && matchesLevel && matchesSource;
     });
-  }, [searchQuery, levelFilter, sourceFilter]);
+  }, [logs, searchQuery, levelFilter, sourceFilter]);
 
   const visibleLogs = filteredLogs.slice(0, visibleCount);
 
+  // Get unique sources for filter dropdown
+  const uniqueSources = [...new Set(logs.map(l => l.source))];
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }) + "." + date.getMilliseconds().toString().padStart(3, "0");
+  };
+
   const handleLiveToggle = () => {
     setIsLive(!isLive);
+    if (!isLive) {
+      refetch();
+    }
     toast({
       title: isLive ? "Live mode disabled" : "Live mode enabled",
-      description: isLive ? "Log updates paused" : "Logs will auto-refresh every 5 seconds",
+      description: isLive ? "Log updates paused" : "Logs will auto-refresh",
     });
   };
 
   const handleExport = () => {
     const csvContent = [
       ["Time", "Level", "Source", "Message"].join(","),
-      ...filteredLogs.map(log => [log.time, log.level, log.source, `"${log.message}"`].join(","))
+      ...filteredLogs.map(log => [formatTime(log.created_at), log.level, log.source, `"${log.message}"`].join(","))
     ].join("\n");
     
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -92,10 +78,6 @@ const Logs = () => {
 
   const handleLoadMore = () => {
     setVisibleCount(prev => Math.min(prev + 10, filteredLogs.length));
-    toast({
-      title: "More logs loaded",
-      description: `Showing ${Math.min(visibleCount + 10, filteredLogs.length)} of ${filteredLogs.length} logs`,
-    });
   };
 
   const clearFilters = () => {
@@ -106,6 +88,17 @@ const Logs = () => {
   };
 
   const hasActiveFilters = searchQuery || levelFilter || sourceFilter;
+
+  if (loading) {
+    return (
+      <div className="animate-fade-in">
+        <DashboardHeader title="Logs" subtitle="System logs and webhook delivery history" />
+        <div className="p-6 flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in">
@@ -138,14 +131,9 @@ const Logs = () => {
               className="h-10 px-4 rounded-xl bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none cursor-pointer text-foreground"
             >
               <option value="">All sources</option>
-              <option value="delivery">Delivery</option>
-              <option value="processor">Processor</option>
-              <option value="trigger">Trigger</option>
-              <option value="retry">Retry</option>
-              <option value="monitor">Monitor</option>
-              <option value="queue">Queue</option>
-              <option value="health">Health</option>
-              <option value="system">System</option>
+              {uniqueSources.map(source => (
+                <option key={source} value={source}>{source}</option>
+              ))}
             </select>
             {hasActiveFilters && (
               <button
@@ -193,58 +181,71 @@ const Logs = () => {
         {/* Filter info */}
         {hasActiveFilters && (
           <div className="text-sm text-muted-foreground">
-            Showing {filteredLogs.length} of {allLogs.length} logs
+            Showing {filteredLogs.length} of {logs.length} logs
           </div>
         )}
 
-        {/* Logs list */}
-        <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          <div className="bg-secondary/50 px-6 py-3 border-b border-border">
-            <div className="grid grid-cols-12 gap-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <div className="col-span-2">Time</div>
-              <div className="col-span-1">Level</div>
-              <div className="col-span-2">Source</div>
-              <div className="col-span-7">Message</div>
+        {/* Empty state */}
+        {logs.length === 0 ? (
+          <div className="bg-card rounded-2xl border border-border p-12 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-8 h-8 text-primary" />
             </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No logs yet</h3>
+            <p className="text-muted-foreground">Logs will appear here when webhook activity occurs</p>
           </div>
-          <div className="divide-y divide-border font-mono text-sm">
-            {visibleLogs.length > 0 ? (
-              visibleLogs.map(log => (
-                <div key={log.id} className="grid grid-cols-12 gap-4 px-6 py-3 hover:bg-secondary/30 transition-colors">
-                  <div className="col-span-2 text-muted-foreground tabular-nums">
-                    {log.time}
-                  </div>
-                  <div className="col-span-1">
-                    <StatusBadge status={log.level} />
-                  </div>
-                  <div className="col-span-2">
-                    <span className="px-2 py-0.5 rounded-md bg-secondary text-xs text-muted-foreground">
-                      {log.source}
-                    </span>
-                  </div>
-                  <div className={`col-span-7 ${levelIcons[log.level]}`}>
-                    {log.message}
-                  </div>
+        ) : (
+          <>
+            {/* Logs list */}
+            <div className="bg-card rounded-2xl border border-border overflow-hidden">
+              <div className="bg-secondary/50 px-6 py-3 border-b border-border">
+                <div className="grid grid-cols-12 gap-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <div className="col-span-2">Time</div>
+                  <div className="col-span-1">Level</div>
+                  <div className="col-span-2">Source</div>
+                  <div className="col-span-7">Message</div>
                 </div>
-              ))
-            ) : (
-              <div className="px-6 py-8 text-center text-muted-foreground">
-                No logs found matching your filters
+              </div>
+              <div className="divide-y divide-border font-mono text-sm">
+                {visibleLogs.length > 0 ? (
+                  visibleLogs.map(log => (
+                    <div key={log.id} className="grid grid-cols-12 gap-4 px-6 py-3 hover:bg-secondary/30 transition-colors">
+                      <div className="col-span-2 text-muted-foreground tabular-nums">
+                        {formatTime(log.created_at)}
+                      </div>
+                      <div className="col-span-1">
+                        <StatusBadge status={log.level} />
+                      </div>
+                      <div className="col-span-2">
+                        <span className="px-2 py-0.5 rounded-md bg-secondary text-xs text-muted-foreground">
+                          {log.source}
+                        </span>
+                      </div>
+                      <div className={`col-span-7 ${levelIcons[log.level]}`}>
+                        {log.message}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-6 py-8 text-center text-muted-foreground">
+                    No logs found matching your filters
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Load more */}
+            {visibleCount < filteredLogs.length && (
+              <div className="flex justify-center">
+                <button
+                  onClick={handleLoadMore}
+                  className="h-10 px-6 rounded-xl bg-secondary border border-border text-sm font-medium hover:bg-secondary/80 transition-colors text-foreground"
+                >
+                  Load more logs ({filteredLogs.length - visibleCount} remaining)
+                </button>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Load more */}
-        {visibleCount < filteredLogs.length && (
-          <div className="flex justify-center">
-            <button
-              onClick={handleLoadMore}
-              className="h-10 px-6 rounded-xl bg-secondary border border-border text-sm font-medium hover:bg-secondary/80 transition-colors text-foreground"
-            >
-              Load more logs ({filteredLogs.length - visibleCount} remaining)
-            </button>
-          </div>
+          </>
         )}
       </div>
     </div>
