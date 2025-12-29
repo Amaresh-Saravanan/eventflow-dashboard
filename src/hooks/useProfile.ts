@@ -1,4 +1,6 @@
-import { useUser } from "@clerk/clerk-react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface Profile {
   id: string;
@@ -9,35 +11,66 @@ export interface Profile {
 }
 
 export const useProfile = () => {
-  const { user, isLoaded } = useUser();
+  const { user, loading: authLoading } = useAuth();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const profile: Profile | null = user ? {
-    id: user.id,
-    full_name: user.fullName,
-    email: user.primaryEmailAddress?.emailAddress || null,
-    created_at: user.createdAt?.toISOString() || new Date().toISOString(),
-    updated_at: user.updatedAt?.toISOString() || new Date().toISOString(),
-  } : null;
+  const fetchProfile = async () => {
+    if (!user) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching profile:", error);
+      setProfile(null);
+    } else {
+      setProfile((data as Profile) ?? null);
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (authLoading) return;
+    fetchProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, authLoading]);
 
   const updateProfile = async (updates: Partial<Pick<Profile, "full_name" | "email">>) => {
     if (!user) return false;
 
-    try {
-      await user.update({
-        firstName: updates.full_name?.split(" ")[0] || undefined,
-        lastName: updates.full_name?.split(" ").slice(1).join(" ") || undefined,
-      });
-      return true;
-    } catch (error) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .upsert({
+        id: user.id,
+        ...updates,
+      })
+      .select("*")
+      .single();
+
+    if (error) {
       console.error("Error updating profile:", error);
       return false;
     }
+
+    setProfile(data as Profile);
+    return true;
   };
 
   return {
     profile,
-    loading: !isLoaded,
+    loading: authLoading || loading,
     updateProfile,
-    refetch: () => {},
+    refetch: fetchProfile,
   };
 };
+
