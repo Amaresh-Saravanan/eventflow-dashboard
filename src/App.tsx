@@ -20,52 +20,66 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "";
 
-if (!CLERK_PUBLISHABLE_KEY) {
-  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
-}
+const App = () => {
+  if (!CLERK_PUBLISHABLE_KEY) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center max-w-md">
+          <h1 className="text-2xl font-bold text-destructive mb-4">Configuration Required</h1>
+          <p className="text-muted-foreground mb-4">
+            The Clerk Publishable Key is missing. Please ensure <code className="bg-muted px-2 py-1 rounded">VITE_CLERK_PUBLISHABLE_KEY</code> is configured in your project secrets.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Get your key from the Clerk Dashboard → API Keys (starts with <code>pk_test_</code> or <code>pk_live_</code>).
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-const App = () => (
-  <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <UserProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<Landing />} />
-                <Route path="/login" element={<Login />} />
-                
-                {/* Protected Dashboard routes */}
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<Dashboard />} />
-                  <Route path="endpoints" element={<Endpoints />} />
-                  <Route path="events" element={<Events />} />
-                  <Route path="events/:id" element={<EventDetail />} />
-                  <Route path="logs" element={<Logs />} />
-                  <Route path="settings" element={<Settings />} />
-                </Route>
-                
-                {/* Catch-all */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </UserProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  </ClerkProvider>
-);
+  return (
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <UserProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/login" element={<Login />} />
+                  
+                  {/* Protected Dashboard routes */}
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <DashboardLayout />
+                      </ProtectedRoute>
+                    }
+                  >
+                    <Route index element={<Dashboard />} />
+                    <Route path="endpoints" element={<Endpoints />} />
+                    <Route path="events" element={<Events />} />
+                    <Route path="events/:id" element={<EventDetail />} />
+                    <Route path="logs" element={<Logs />} />
+                    <Route path="settings" element={<Settings />} />
+                  </Route>
+                  
+                  {/* Catch-all */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </UserProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ClerkProvider>
+  );
+};
 
 export default App;
