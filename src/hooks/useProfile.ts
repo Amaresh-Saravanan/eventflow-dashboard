@@ -1,7 +1,4 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/hooks/use-toast";
+import { useUser } from "@clerk/clerk-react";
 
 export interface Profile {
   id: string;
@@ -12,62 +9,35 @@ export interface Profile {
 }
 
 export const useProfile = () => {
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, isLoaded } = useUser();
 
-  const fetchProfile = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-
-    if (error) {
-      console.error("Error fetching profile:", error);
-    } else {
-      setProfile(data);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchProfile();
-  }, [user]);
+  const profile: Profile | null = user ? {
+    id: user.id,
+    full_name: user.fullName,
+    email: user.primaryEmailAddress?.emailAddress || null,
+    created_at: user.createdAt?.toISOString() || new Date().toISOString(),
+    updated_at: user.updatedAt?.toISOString() || new Date().toISOString(),
+  } : null;
 
   const updateProfile = async (updates: Partial<Pick<Profile, "full_name" | "email">>) => {
     if (!user) return false;
 
-    const { error } = await supabase
-      .from("profiles")
-      .update(updates)
-      .eq("id", user.id);
-
-    if (error) {
-      console.error("Error updating profile:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update profile",
-        variant: "destructive",
+    try {
+      await user.update({
+        firstName: updates.full_name?.split(" ")[0] || undefined,
+        lastName: updates.full_name?.split(" ").slice(1).join(" ") || undefined,
       });
+      return true;
+    } catch (error) {
+      console.error("Error updating profile:", error);
       return false;
     }
-
-    setProfile(prev => prev ? { ...prev, ...updates } : null);
-    toast({
-      title: "Profile updated",
-      description: "Your changes have been saved",
-    });
-    return true;
   };
 
   return {
     profile,
-    loading,
+    loading: !isLoaded,
     updateProfile,
-    refetch: fetchProfile,
+    refetch: () => {},
   };
 };
