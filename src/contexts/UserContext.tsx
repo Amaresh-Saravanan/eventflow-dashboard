@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, ReactNode } from "react";
+import { useProfile } from "@/hooks/useProfile";
 
 interface UserProfile {
   fullName: string;
@@ -8,34 +9,30 @@ interface UserProfile {
 
 interface UserContextType {
   user: UserProfile;
-  updateUser: (updates: Partial<UserProfile>) => void;
+  loading: boolean;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<UserProfile>({
-    fullName: "John Doe",
-    email: "john@example.com",
-    initials: "JD",
-  });
+const getInitials = (name: string | null | undefined): string => {
+  if (!name) return "??";
+  const names = name.trim().split(" ");
+  return names.length >= 2
+    ? (names[0][0] + names[names.length - 1][0]).toUpperCase()
+    : names[0].substring(0, 2).toUpperCase();
+};
 
-  const updateUser = (updates: Partial<UserProfile>) => {
-    setUser(prev => {
-      const newUser = { ...prev, ...updates };
-      // Auto-generate initials from name
-      if (updates.fullName) {
-        const names = updates.fullName.trim().split(" ");
-        newUser.initials = names.length >= 2 
-          ? (names[0][0] + names[names.length - 1][0]).toUpperCase()
-          : names[0].substring(0, 2).toUpperCase();
-      }
-      return newUser;
-    });
+export const UserProvider = ({ children }: { children: ReactNode }) => {
+  const { profile, loading } = useProfile();
+
+  const user: UserProfile = {
+    fullName: profile?.full_name || "User",
+    email: profile?.email || "",
+    initials: getInitials(profile?.full_name),
   };
 
   return (
-    <UserContext.Provider value={{ user, updateUser }}>
+    <UserContext.Provider value={{ user, loading }}>
       {children}
     </UserContext.Provider>
   );
